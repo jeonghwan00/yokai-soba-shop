@@ -40,10 +40,11 @@ function appendForwardParams(url) {
 }
 
 // Send the player onward to the Vibe Jam 2026 portal hub. The hub then
-// redirects to the next game in the webring.
+// redirects to the next game in the webring. We use vibej.am (the URL
+// referenced in the official submission form) — vibejam.cc is an alias.
 export function exitToVibeJam() {
   if (typeof window === 'undefined') return;
-  const url = new URL('https://vibejam.cc/portal/2026');
+  const url = new URL('https://vibej.am/portal/2026');
   url.searchParams.set('ref', selfRef());
   appendForwardParams(url);
   window.location.href = url.toString();
