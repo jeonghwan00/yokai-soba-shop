@@ -25,27 +25,72 @@ function toLogical(clientX, clientY, canvas) {
   };
 }
 
+// Touch displacement (in logical units) below which we treat a touchend as
+// a tap and synthesize a click. Above the threshold the touch was a drag.
+const TAP_MAX_DIST_SQ = 12 * 12;
+
 export function attachInput(canvas) {
-  const handle = (eventName, set) => (e) => {
-    const isTouch = e.touches !== undefined;
-    const point = isTouch && e.touches[0]
-      ? toLogical(e.touches[0].clientX, e.touches[0].clientY, canvas)
-      : toLogical(e.clientX, e.clientY, canvas);
+  // Pull touch coordinates from `touches[0]` when present, else
+  // `changedTouches[0]` (which is the only place touchend has them).
+  function touchPoint(e) {
+    const t = (e.touches && e.touches[0])
+      || (e.changedTouches && e.changedTouches[0]);
+    if (!t) return null;
+    return toLogical(t.clientX, t.clientY, canvas);
+  }
+
+  function pointFromEvent(e) {
+    if (e.touches !== undefined) return touchPoint(e);
+    return toLogical(e.clientX, e.clientY, canvas);
+  }
+
+  function dispatch(eventName, set, e, overridePoint) {
+    const point = overridePoint || pointFromEvent(e);
+    if (!point) return;
     pointer.x = point.x;
     pointer.y = point.y;
     if (eventName === 'down') pointer.down = true;
     if (eventName === 'up') pointer.down = false;
     for (const fn of set) fn(point);
-  };
+  }
 
-  canvas.addEventListener('mousedown', (e) => { e.preventDefault(); handle('down', downListeners)(e); });
-  canvas.addEventListener('mouseup',   (e) => { handle('up', upListeners)(e); });
-  canvas.addEventListener('mousemove', handle('move', moveListeners));
-  canvas.addEventListener('click',     handle('click', clickListeners));
+  canvas.addEventListener('mousedown', (e) => { e.preventDefault(); dispatch('down', downListeners, e); });
+  canvas.addEventListener('mouseup',   (e) => { dispatch('up', upListeners, e); });
+  canvas.addEventListener('mousemove', (e) => { dispatch('move', moveListeners, e); });
+  canvas.addEventListener('click',     (e) => { dispatch('click', clickListeners, e); });
 
-  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handle('down', downListeners)(e); });
-  canvas.addEventListener('touchend',   (e) => { handle('up', upListeners)(e); });
-  canvas.addEventListener('touchmove',  (e) => { e.preventDefault(); handle('move', moveListeners)(e); }, { passive: false });
+  // Touch path:
+  // - touchstart records the start point and fires `down` listeners.
+  // - touchmove fires `move` listeners.
+  // - touchend fires `up` listeners. If the finger barely moved we also
+  //   synthesize a click (browsers suppress the synthetic mouse click
+  //   because we preventDefault on touchstart, so we have to dispatch it
+  //   ourselves).
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const p = touchPoint(e);
+    if (p) touchStart = p;
+    dispatch('down', downListeners, e, p);
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    dispatch('move', moveListeners, e);
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    const p = touchPoint(e);
+    dispatch('up', upListeners, e, p);
+    if (p && touchStart) {
+      const dx = p.x - touchStart.x;
+      const dy = p.y - touchStart.y;
+      if (dx * dx + dy * dy <= TAP_MAX_DIST_SQ) {
+        // Treat as a tap — synthesize the click that browsers won't fire
+        // for us once we preventDefault'd touchstart.
+        dispatch('click', clickListeners, e, p);
+      }
+    }
+    touchStart = null;
+  });
 
   // Keyboard listeners are attached to the window so they fire whether or
   // not the canvas has focus.

@@ -173,6 +173,11 @@ export function createKitchen({ onServe, onClear, isInputBlocked } = {}) {
     drag = null;
 
     unsubs.push(onDown((p) => {
+      // A fresh down event marks a new gesture — any leftover click
+      // suppression from a previous drag is no longer relevant. (Mostly
+      // matters on touch, where no synthetic click fires after a drag to
+      // consume the flag itself.)
+      suppressNextClick = false;
       if (blocked() || pour) return;
       const id = pickAt(p);
       if (id) drag = { id, x: p.x, y: p.y };

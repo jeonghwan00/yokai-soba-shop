@@ -26,17 +26,20 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 function fitCanvasToViewport() {
-  const scale = Math.max(
-    1,
-    Math.min(
-      Math.floor(window.innerWidth / LOGICAL_WIDTH),
-      Math.floor(window.innerHeight / LOGICAL_HEIGHT)
-    )
+  // Largest scale that fits in the viewport without overflow.
+  const raw = Math.min(
+    window.innerWidth / LOGICAL_WIDTH,
+    window.innerHeight / LOGICAL_HEIGHT,
   );
+  // Snap to integer scale only when we can — preserves crisp pixels on
+  // desktop. Fractional scaling kicks in on mobile/small viewports so
+  // the game actually fits (640px logical is wider than most phones).
+  const scale = raw >= 1 ? Math.floor(raw) : raw;
   canvas.style.width = `${LOGICAL_WIDTH * scale}px`;
   canvas.style.height = `${LOGICAL_HEIGHT * scale}px`;
 }
 window.addEventListener('resize', fitCanvasToViewport);
+window.addEventListener('orientationchange', fitCanvasToViewport);
 fitCanvasToViewport();
 
 attachInput(canvas);
