@@ -16,15 +16,19 @@ import { createKitchen } from '../systems/dragdrop.js';
 import { createNotebook } from '../systems/notebook.js';
 import { audio } from '../systems/audio.js';
 import { tr, getLocale, toggleLocale } from '../i18n.js';
+import { portal, exitToVibeJam, returnToRef, refLabel } from '../portals.js';
 
 const CHAR_CX = 320;
 const CHAR_CY = 110;
 const CHAR_SIZE = 150;
 
 // HUD buttons in the top-right corner.
-const NOTEBOOK_BTN = { x: LOGICAL_WIDTH - 86, y: 22, w: 78, h: 18 };
-const MUTE_BTN     = { x: LOGICAL_WIDTH - 86, y: 44, w: 78, h: 18 };
-const LANG_BTN     = { x: LOGICAL_WIDTH - 86, y: 66, w: 78, h: 18 };
+const NOTEBOOK_BTN     = { x: LOGICAL_WIDTH - 86, y: 22, w: 78, h: 18 };
+const MUTE_BTN         = { x: LOGICAL_WIDTH - 86, y: 44, w: 78, h: 18 };
+const LANG_BTN         = { x: LOGICAL_WIDTH - 86, y: 66, w: 78, h: 18 };
+const EXIT_PORTAL_BTN  = { x: LOGICAL_WIDTH - 86, y: 88, w: 78, h: 18 };
+// Return portal — only rendered/clickable when we know where they came from.
+const RETURN_PORTAL_BTN = { x: 12, y: 26, w: 90, h: 18 };
 
 const PHASE = {
   ARRIVING: 'arriving',
@@ -116,6 +120,7 @@ function pickTastingLine(c, bowl) {
 function handleServe(bowl, pourQualities = {}) {
   const c = currentChar();
   if (!c) return;
+  audio.playSfx('bowl_place');
   const result = evaluateBowl(bowl, c);
 
   // "정성껏 따른" 다시 보너스 — graded so a near-miss still earns
@@ -165,6 +170,8 @@ function handleServe(bowl, pourQualities = {}) {
         type: 'SET_EXPRESSION',
         expression: result.kind === 'satisfied' ? 'happy' : 'sad',
       });
+      // 만족 효과음 — only on the satisfied verdict.
+      if (result.kind === 'satisfied') audio.playSfx('satisfied');
 
       // Beat 3 — the actual reaction line, picked by affinity tier.
       const tierKey = affinityTier(state.affinity[state.currentCustomer]).satisfied;
@@ -201,6 +208,8 @@ function advanceQueueOrEndNight() {
   if (state.currentCustomer) {
     phase = PHASE.ARRIVING;
     phaseTime = 0;
+    // Door bell — next customer entering.
+    audio.playSfx('door_bell');
   } else if (state.day === 7) {
     // Day 7 has no tally — go straight to the ending sequence.
     dispatch({ type: 'ENTER_SCENE', scene: SCENES.ENDING });
@@ -230,6 +239,14 @@ function handleClick(p) {
     toggleLocale();
     return;
   }
+  if (pointInRect(p, EXIT_PORTAL_BTN)) {
+    exitToVibeJam();
+    return;
+  }
+  if (portal.ref && pointInRect(p, RETURN_PORTAL_BTN)) {
+    returnToRef();
+    return;
+  }
   if (dialogue) {
     dialogue.advance();
     return;
@@ -245,6 +262,8 @@ export function enter() {
   dialogue = null;
   lastResult = null;
   notebook = createNotebook();
+  // Door bell — first customer of the night entering.
+  audio.playSfx('door_bell');
 
   unsubClick = onClick(handleClick);
   unsubKey = onKeyDown((key) => {
@@ -333,6 +352,28 @@ export function render(ctx) {
     LANG_BTN.y + LANG_BTN.h / 2, {
     color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
   });
+
+  // Vibe Jam exit portal — sends the player onward through the webring.
+  fillRoundRect(ctx, EXIT_PORTAL_BTN.x, EXIT_PORTAL_BTN.y,
+    EXIT_PORTAL_BTN.w, EXIT_PORTAL_BTN.h, 4, 'rgba(106, 76, 147, 0.9)');
+  drawText(ctx, '⛩ Vibe Jam',
+    EXIT_PORTAL_BTN.x + EXIT_PORTAL_BTN.w / 2,
+    EXIT_PORTAL_BTN.y + EXIT_PORTAL_BTN.h / 2, {
+    color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
+  });
+
+  // Return portal — only when we know where they came from.
+  if (portal.ref) {
+    fillRoundRect(ctx, RETURN_PORTAL_BTN.x, RETURN_PORTAL_BTN.y,
+      RETURN_PORTAL_BTN.w, RETURN_PORTAL_BTN.h, 4, 'rgba(106, 76, 147, 0.9)');
+    const label = refLabel() || 'back';
+    const trimmed = label.length > 14 ? label.slice(0, 13) + '…' : label;
+    drawText(ctx, `← ${trimmed}`,
+      RETURN_PORTAL_BTN.x + RETURN_PORTAL_BTN.w / 2,
+      RETURN_PORTAL_BTN.y + RETURN_PORTAL_BTN.h / 2, {
+      color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
+    });
+  }
 
   // Kitchen panel — only during the serve window.
   if (phase === PHASE.AWAITING_SERVE && kitchen) {

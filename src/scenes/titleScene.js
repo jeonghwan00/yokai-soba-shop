@@ -9,8 +9,11 @@ import {
 } from '../systems/renderer.js';
 import { onClick, pointInRect } from '../systems/input.js';
 import { tr, getLocale, toggleLocale } from '../i18n.js';
+import { portal, exitToVibeJam, returnToRef, refLabel } from '../portals.js';
 
-const LANG_BTN = { x: LOGICAL_WIDTH - 96, y: LOGICAL_HEIGHT - 28, w: 86, h: 18 };
+const LANG_BTN        = { x: LOGICAL_WIDTH - 96, y: LOGICAL_HEIGHT - 28, w: 86, h: 18 };
+const EXIT_PORTAL_BTN = { x: LOGICAL_WIDTH - 96, y: LOGICAL_HEIGHT - 50, w: 86, h: 18 };
+const RETURN_PORTAL_BTN = { x: 10, y: LOGICAL_HEIGHT - 28, w: 100, h: 18 };
 
 let unsubscribe = null;
 let blink = 0;
@@ -19,10 +22,18 @@ export function enter() {
   blink = 0;
   unsubscribe = onClick((p) => {
     if (state.scene !== SCENES.TITLE) return;
-    // Language toggle button — bottom-right; handled before "start" so the
-    // click doesn't fall through and immediately begin the game.
+    // Buttons are checked first so a click on them doesn't fall through to
+    // "start the game".
     if (pointInRect(p, LANG_BTN)) {
       toggleLocale();
+      return;
+    }
+    if (pointInRect(p, EXIT_PORTAL_BTN)) {
+      exitToVibeJam();
+      return;
+    }
+    if (portal.ref && pointInRect(p, RETURN_PORTAL_BTN)) {
+      returnToRef();
       return;
     }
     // START_GAME transitions us to MORNING for day 1.
@@ -92,4 +103,26 @@ export function render(ctx) {
     LANG_BTN.y + LANG_BTN.h / 2, {
     color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
   });
+
+  // Vibe Jam exit portal.
+  fillRoundRect(ctx, EXIT_PORTAL_BTN.x, EXIT_PORTAL_BTN.y,
+    EXIT_PORTAL_BTN.w, EXIT_PORTAL_BTN.h, 4, 'rgba(106, 76, 147, 0.9)');
+  drawText(ctx, '⛩ Vibe Jam',
+    EXIT_PORTAL_BTN.x + EXIT_PORTAL_BTN.w / 2,
+    EXIT_PORTAL_BTN.y + EXIT_PORTAL_BTN.h / 2, {
+    color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
+  });
+
+  // Return portal — only when we arrived from another game.
+  if (portal.ref) {
+    fillRoundRect(ctx, RETURN_PORTAL_BTN.x, RETURN_PORTAL_BTN.y,
+      RETURN_PORTAL_BTN.w, RETURN_PORTAL_BTN.h, 4, 'rgba(106, 76, 147, 0.9)');
+    const label = refLabel() || 'back';
+    const trimmed = label.length > 16 ? label.slice(0, 15) + '…' : label;
+    drawText(ctx, `← ${trimmed}`,
+      RETURN_PORTAL_BTN.x + RETURN_PORTAL_BTN.w / 2,
+      RETURN_PORTAL_BTN.y + RETURN_PORTAL_BTN.h / 2, {
+      color: '#f5e6d3', size: 10, align: 'center', baseline: 'middle',
+    });
+  }
 }

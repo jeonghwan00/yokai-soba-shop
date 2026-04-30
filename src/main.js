@@ -7,6 +7,7 @@ import { attachInput, onClick, onKeyDown } from './systems/input.js';
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT, drawText, clear } from './systems/renderer.js';
 import { audio } from './systems/audio.js';
 import { tr } from './i18n.js';
+import { portal } from './portals.js';
 import * as titleScene from './scenes/titleScene.js';
 import * as morningScene from './scenes/morningScene.js';
 import * as nightScene from './scenes/nightScene.js';
@@ -109,6 +110,11 @@ loadAssets({
 }).then((assets) => {
   audio.attach(assets);
   dispatch({ type: 'ASSETS_LOADED', assets });
+  // Vibe Jam continuity: arrivals through a portal skip our title screen
+  // entirely so the hand-off feels seamless to the player.
+  if (portal.arrived) {
+    dispatch({ type: 'START_GAME' });
+  }
 }).catch((err) => {
   console.error('[main] asset load failed', err);
   drawText(ctx, tr('자산 로드 실패 — 콘솔 확인', 'Asset load failed — see console'),

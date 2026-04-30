@@ -15,8 +15,12 @@ import {
   fillRoundRect,
   drawText,
 } from './renderer.js';
+import { audio } from './audio.js';
 
 const CHARS_PER_SEC = 36;
+// Play a text blip every N characters revealed. ~36 cps / 3 ≈ 12 blips/s
+// which is busy but readable — closer than that turns into a buzz.
+const BLIP_EVERY = 3;
 
 // Layout for the dialogue box at the bottom of the canvas.
 const BOX_PAD_X = 16;
@@ -36,6 +40,7 @@ export function createDialogue(lines, opts = {}) {
     lines: [...lines],
     lineIndex: 0,
     chars: 0,
+    lastBlipChar: 0,
     finished: false,
 
     update(dt) {
@@ -43,6 +48,15 @@ export function createDialogue(lines, opts = {}) {
       const cur = state.lines[state.lineIndex] ?? '';
       if (state.chars < cur.length) {
         state.chars = Math.min(cur.length, state.chars + dt * CHARS_PER_SEC);
+        // Blip on every Nth new character revealed. We don't blip on the
+        // very last character so the line ending feels quiet.
+        const nowChars = Math.floor(state.chars);
+        if (nowChars > state.lastBlipChar
+            && nowChars % BLIP_EVERY === 0
+            && nowChars < cur.length) {
+          audio.playSfx('text_blip');
+        }
+        state.lastBlipChar = nowChars;
       }
     },
 
@@ -58,6 +72,7 @@ export function createDialogue(lines, opts = {}) {
       if (state.lineIndex < state.lines.length - 1) {
         state.lineIndex += 1;
         state.chars = 0;
+        state.lastBlipChar = 0;
       } else {
         state.finished = true;
         onDone();

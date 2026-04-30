@@ -47,7 +47,7 @@ const POUR_SWEET_MIN = 0.62;
 const POUR_SWEET_MAX = 0.84;
 const POUR_GOOD_MIN  = 0.42;
 const POUR_GOOD_MAX  = 0.96;
-const POUR_FEEDBACK_MS = 750;
+const POUR_FEEDBACK_MS = 500;
 const DASHI_IDS = new Set(['hot_dashi', 'cold_dashi']);
 
 function pourQualityFor(fillPct) {
@@ -223,10 +223,11 @@ export function createKitchen({ onServe, onClear, isInputBlocked } = {}) {
       suppressNextClick = false;
       return true;
     }
-    // Pour mode then steals all subsequent clicks — capturing wins over
-    // serve/clear button presses.
-    if (pour && pour.capturedFill === null) {
-      capturePour();
+    // Pour mode steals ALL clicks — both during filling (to capture) and
+    // during the feedback window (so a hasty Serve doesn't fire before the
+    // dashi has actually been committed to the bowl).
+    if (pour) {
+      if (pour.capturedFill === null) capturePour();
       return true;
     }
     if (pointInRect(p, SERVE_BTN)) {

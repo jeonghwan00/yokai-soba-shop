@@ -34,14 +34,10 @@ function buildManifest() {
   images.heart_mid = 'assets/ui/heart_mid.png';
   images.heart_high = 'assets/ui/heart_high.png';
 
+  // Only BGM streams from disk — SFX are synthesized in audio.js via
+  // WebAudio so we don't ship one-shot files.
   const audio = {
     bgm_main: 'assets/audio/bgm_main.mp3',
-    bgm_rain: 'assets/audio/bgm_rain.mp3',
-    bgm_ending: 'assets/audio/bgm_ending.mp3',
-    sfx_door_bell: 'assets/audio/sfx_door_bell.mp3',
-    sfx_bowl_place: 'assets/audio/sfx_bowl_place.mp3',
-    sfx_text_blip: 'assets/audio/sfx_text_blip.mp3',
-    sfx_satisfied: 'assets/audio/sfx_satisfied.mp3',
   };
 
   return { images, audio };

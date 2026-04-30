@@ -14,8 +14,13 @@ import {
   drawText,
   fillRoundRect,
 } from '../systems/renderer.js';
-import { onClick } from '../systems/input.js';
+import { onClick, pointInRect } from '../systems/input.js';
 import { tr } from '../i18n.js';
+import { exitToVibeJam } from '../portals.js';
+
+// Bottom-right exit portal on the stats screen — natural CTA after the
+// 7-night campaign concludes.
+const EXIT_PORTAL_BTN = { x: LOGICAL_WIDTH / 2 - 60, y: LOGICAL_HEIGHT - 48, w: 120, h: 20 };
 
 // Timeline (seconds since enter) — each beat fades in/out within its window.
 const BEATS = [
@@ -100,13 +105,18 @@ let skipToStats = false;
 export function enter() {
   entered = 0;
   skipToStats = false;
-  unsubClick = onClick(() => {
+  unsubClick = onClick((p) => {
     if (!skipToStats && entered < BEATS_END) {
       // First click skips past the slow beats.
       skipToStats = true;
       return;
     }
-    // Subsequent click on the stats screen returns to title.
+    // Stats screen — exit portal takes priority over the "return to title"
+    // fallback so a click on the portal doesn't reset the game first.
+    if (pointInRect(p, EXIT_PORTAL_BTN)) {
+      exitToVibeJam();
+      return;
+    }
     dispatch({ type: 'ENTER_SCENE', scene: SCENES.TITLE });
   });
 }
@@ -223,7 +233,7 @@ function renderStats(ctx) {
 
   // Total sales — small, low-prominence near the bottom.
   drawText(ctx, tr(`누적 매출 ${state.money}원`, `Total: ₩${state.money}`),
-    LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 60, {
+    LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 90, {
     color: '#5d3a1a', size: 10, align: 'center', baseline: 'middle',
   });
 
@@ -231,14 +241,23 @@ function renderStats(ctx) {
   drawText(ctx, tr(
     '할머니가 그랬듯이, 이제 내가 노렌을 건다.',
     'Just as Grandmother did, now I hang the noren.'
-  ), LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 40, {
+  ), LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 72, {
+    color: '#f5e6d3', size: 11, align: 'center', baseline: 'middle',
+  });
+
+  // Vibe Jam exit portal — the natural next step after the campaign ends.
+  fillRoundRect(ctx, EXIT_PORTAL_BTN.x, EXIT_PORTAL_BTN.y,
+    EXIT_PORTAL_BTN.w, EXIT_PORTAL_BTN.h, 5, 'rgba(106, 76, 147, 0.9)');
+  drawText(ctx, '⛩ Vibe Jam',
+    EXIT_PORTAL_BTN.x + EXIT_PORTAL_BTN.w / 2,
+    EXIT_PORTAL_BTN.y + EXIT_PORTAL_BTN.h / 2, {
     color: '#f5e6d3', size: 11, align: 'center', baseline: 'middle',
   });
 
   if (Math.floor(entered * 1.6) % 2 === 0) {
-    drawText(ctx, tr('— 클릭해서 처음으로 —', '— Click to return to title —'),
-      LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 18, {
-      color: '#f4d03f', size: 10, align: 'center', baseline: 'middle',
+    drawText(ctx, tr('— 또는 다른 곳을 클릭해서 처음으로 —', '— or click anywhere else to return to title —'),
+      LOGICAL_WIDTH / 2, LOGICAL_HEIGHT - 14, {
+      color: '#f4d03f', size: 9, align: 'center', baseline: 'middle',
     });
   }
 }
