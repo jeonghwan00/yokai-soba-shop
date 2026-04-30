@@ -60,12 +60,12 @@ export function render(ctx) {
     clear(ctx, '#0a0a0f');
   }
 
-  // Korean title is the canonical title regardless of language. Subtitle
-  // shows the romaji.
-  drawText(ctx, '요괴 소바집', LOGICAL_WIDTH / 2, 130, {
+  // Big title in the active language; the other language sits as a small
+  // subtitle so the brand stays bilingual either way.
+  drawText(ctx, tr('요괴 소바집', 'Yokai Soba Shop'), LOGICAL_WIDTH / 2, 130, {
     color: '#f5e6d3', size: 28, align: 'center', baseline: 'middle',
   });
-  drawText(ctx, 'Yokai Soba Shop', LOGICAL_WIDTH / 2, 158, {
+  drawText(ctx, tr('Yokai Soba Shop', '요괴 소바집'), LOGICAL_WIDTH / 2, 158, {
     color: '#8c7a65', size: 11, align: 'center', baseline: 'middle',
   });
 

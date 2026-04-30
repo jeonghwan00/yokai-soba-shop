@@ -6,8 +6,15 @@ import { loadAssets } from './systems/assetLoader.js';
 import { attachInput, onClick, onKeyDown } from './systems/input.js';
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT, drawText, clear } from './systems/renderer.js';
 import { audio } from './systems/audio.js';
-import { tr } from './i18n.js';
+import { tr, getLocale, onLocaleChange } from './i18n.js';
 import { portal } from './portals.js';
+
+// Keep the browser tab title in sync with the active locale.
+function syncDocTitle() {
+  document.title = getLocale() === 'en' ? 'Yokai Soba Shop' : '요괴 소바집';
+}
+syncDocTitle();
+onLocaleChange(syncDocTitle);
 import * as titleScene from './scenes/titleScene.js';
 import * as morningScene from './scenes/morningScene.js';
 import * as nightScene from './scenes/nightScene.js';
